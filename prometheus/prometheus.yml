@@ -1,8 +1,4 @@
-# prometheus.yml
-global:
-  scrape_interval: 15s
-
 scrape_configs:
   - job_name: 'url-shortener'
     static_configs:
-      - targets: ['api:8080']
+      - targets: ['url-shortener-api:8080']

@@ -1,14 +1,15 @@
-FROM golang:1.23.4-alpine
+FROM golang:1.23-alpine
+
+RUN apk update && apk add --no-cache git curl build-base
+
+ENV PATH="/go/bin:$PATH"
+
+RUN go install github.com/air-verse/air@latest
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
-RUN go mod download
-
 COPY . .
-
-RUN go build -o url-shortener ./cmd/main.go
 
 EXPOSE 8080
 
-CMD ["./url-shortener"]
+CMD ["air"]

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/joaopaulo-bertoncini/url-shortener/internal/service"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,6 +27,7 @@ func HandleShorten(c *gin.Context) {
 		return
 	}
 
+	ShortenCounter.Inc()
 	c.JSON(http.StatusOK, gin.H{"short_url": shortURL})
 }
 
@@ -36,6 +38,7 @@ func HandleRedirect(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
+	RedirectCounter.Inc()
 	c.Redirect(http.StatusMovedPermanently, longURL)
 }
 
@@ -60,4 +63,8 @@ func HandleStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+func HandleMetrics(c *gin.Context) {
+	promhttp.Handler().ServeHTTP(c.Writer, c.Request)
 }

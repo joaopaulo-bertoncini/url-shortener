@@ -10,16 +10,16 @@ import (
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader("Authorization")
-		if token == "" || !strings.HasPrefix(token, "Bearer ") {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing or invalid token"})
 			return
 		}
 
-		expected := os.Getenv("AUTH_TOKEN")
-		provided := strings.TrimPrefix(token, "Bearer ")
+		providedToken := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+		expectedToken := os.Getenv("AUTH_TOKEN")
 
-		if provided != expected {
+		if providedToken != expectedToken {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}

@@ -1,15 +1,24 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 
 	handler "github.com/joaopaulo-bertoncini/url-shortener/internal/handler"
 	logger "github.com/joaopaulo-bertoncini/url-shortener/internal/logger"
-	middleware "github.com/joaopaulo-bertoncini/url-shortener/internal/middleware"
+	"github.com/joaopaulo-bertoncini/url-shortener/internal/middleware"
 	repo "github.com/joaopaulo-bertoncini/url-shortener/internal/repository"
 )
+
+func init() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("No .env file found or could not load it")
+	}
+}
 
 func main() {
 	if err := logger.InitLogger(); err != nil {
@@ -28,8 +37,11 @@ func main() {
 
 	r := gin.Default()
 
+	handler.InitCustomMetrics()
+
 	r.GET("/:shortID", handler.HandleRedirect)
 	r.GET("/stats/:shortID", handler.HandleStats)
+	r.GET("/metrics", handler.HandleMetrics)
 
 	protected := r.Group("/")
 	protected.Use(middleware.AuthMiddleware())
