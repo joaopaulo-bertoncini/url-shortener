@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -12,6 +13,7 @@ import (
 	metrics "github.com/joaopaulo-bertoncini/url-shortener/internal/metrics"
 	middleware "github.com/joaopaulo-bertoncini/url-shortener/internal/middleware"
 	repo "github.com/joaopaulo-bertoncini/url-shortener/internal/repository"
+	telemetry "github.com/joaopaulo-bertoncini/url-shortener/internal/telemetry"
 )
 
 func init() {
@@ -22,6 +24,10 @@ func init() {
 }
 
 func main() {
+	ctx := context.Background()
+	cleanup := telemetry.InitTracer(ctx)
+	defer cleanup()
+
 	if err := logger.InitLogger(); err != nil {
 		panic("failed to initialize logger: " + err.Error())
 	}
