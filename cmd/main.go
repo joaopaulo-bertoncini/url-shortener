@@ -9,7 +9,8 @@ import (
 
 	handler "github.com/joaopaulo-bertoncini/url-shortener/internal/handler"
 	logger "github.com/joaopaulo-bertoncini/url-shortener/internal/logger"
-	"github.com/joaopaulo-bertoncini/url-shortener/internal/middleware"
+	metrics "github.com/joaopaulo-bertoncini/url-shortener/internal/metrics"
+	middleware "github.com/joaopaulo-bertoncini/url-shortener/internal/middleware"
 	repo "github.com/joaopaulo-bertoncini/url-shortener/internal/repository"
 )
 
@@ -36,8 +37,9 @@ func main() {
 	}
 
 	r := gin.Default()
+	r.Use(middleware.MetricsMiddleware())
 
-	handler.InitCustomMetrics()
+	metrics.InitCustomMetrics()
 
 	r.GET("/:shortID", handler.HandleRedirect)
 	r.GET("/stats/:shortID", handler.HandleStats)

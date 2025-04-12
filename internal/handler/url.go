@@ -1,9 +1,9 @@
-// internal/handler/url.go
 package handler
 
 import (
 	"net/http"
 
+	"github.com/joaopaulo-bertoncini/url-shortener/internal/metrics"
 	"github.com/joaopaulo-bertoncini/url-shortener/internal/service"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -27,7 +27,7 @@ func HandleShorten(c *gin.Context) {
 		return
 	}
 
-	ShortenCounter.Inc()
+	metrics.ShortenCounter.Inc()
 	c.JSON(http.StatusOK, gin.H{"short_url": shortURL})
 }
 
@@ -38,7 +38,7 @@ func HandleRedirect(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	RedirectCounter.Inc()
+	metrics.RedirectCounter.Inc()
 	c.Redirect(http.StatusMovedPermanently, longURL)
 }
 
