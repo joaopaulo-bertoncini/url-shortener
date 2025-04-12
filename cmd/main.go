@@ -17,6 +17,7 @@ import (
 )
 
 func init() {
+	// Load environment variables from .env file
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("No .env file found or could not load it")
@@ -25,6 +26,7 @@ func init() {
 
 func main() {
 	ctx := context.Background()
+	// Initialize OpenTelemetry
 	cleanup := telemetry.InitTracer(ctx)
 	defer cleanup()
 

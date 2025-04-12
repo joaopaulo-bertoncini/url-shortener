@@ -12,11 +12,15 @@ import (
 	"github.com/joaopaulo-bertoncini/url-shortener/internal/logger"
 	"github.com/joaopaulo-bertoncini/url-shortener/internal/metrics"
 	"github.com/joaopaulo-bertoncini/url-shortener/internal/repository"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+var tracer = otel.Tracer("url-shortener/service")
 
 const (
 	shortIDLength = 8
@@ -45,14 +49,18 @@ func generateShortID(longURL string) string {
 }
 
 func ShortenURL(ctx context.Context, longURL string) (string, error) {
+	ctx, span := tracer.Start(ctx, "ShortenURL")
+	defer span.End()
+
 	shortID := generateShortID(longURL)
 	shortURL := urlPrefix + shortID
-
 	// Redis SET
 	start := time.Now()
 	err := repository.RedisClient.Set(ctx, shortID, longURL, ttl).Err()
 	metrics.RedisOpDuration.WithLabelValues("SET").Observe(time.Since(start).Seconds())
 	if err != nil {
+		span.SetStatus(codes.Error, "failed to save mapping")
+		span.RecordError(err)
 		logger.Log.Errorf("Redis SET error: %v", err)
 		return "", errors.New("could not store in cache")
 	}
@@ -64,6 +72,8 @@ func ShortenURL(ctx context.Context, longURL string) (string, error) {
 	_, err = collection.InsertOne(ctx, doc)
 	metrics.MongoOpDuration.WithLabelValues("InsertOne").Observe(time.Since(start).Seconds())
 	if err != nil {
+		span.SetStatus(codes.Error, "failed to save mapping")
+		span.RecordError(err)
 		logger.Log.Errorf("Mongo Insert error: %v", err)
 		return "", errors.New("could not store in database")
 	}
@@ -72,6 +82,8 @@ func ShortenURL(ctx context.Context, longURL string) (string, error) {
 }
 
 func ResolveShortID(ctx context.Context, shortID string) (string, error) {
+	ctx, span := tracer.Start(ctx, "ResolveShortID")
+	defer span.End()
 	// Redis GET
 	start := time.Now()
 	longURL, err := repository.RedisClient.Get(ctx, shortID).Result()
@@ -84,6 +96,8 @@ func ResolveShortID(ctx context.Context, shortID string) (string, error) {
 		return longURL, nil
 	}
 	if err != redis.Nil {
+		span.SetStatus(codes.Error, "failed to resolve short ID")
+		span.RecordError(err)
 		logger.Log.Warnf("Redis error: %v", err)
 	}
 	metrics.RedisCacheMisses.Inc()
@@ -100,8 +114,12 @@ func ResolveShortID(ctx context.Context, shortID string) (string, error) {
 	metrics.MongoOpDuration.WithLabelValues("FindOneAndUpdate").Observe(time.Since(start).Seconds())
 
 	if err == mongo.ErrNoDocuments {
+		span.SetStatus(codes.Error, "short URL not found")
+		span.RecordError(err)
 		return "", errors.New("short URL not found")
 	} else if err != nil {
+		span.SetStatus(codes.Error, "failed to resolve short ID")
+		span.RecordError(err)
 		logger.Log.Errorf("Mongo error: %v", err)
 		return "", errors.New("internal error")
 	}
@@ -115,12 +133,18 @@ func ResolveShortID(ctx context.Context, shortID string) (string, error) {
 }
 
 func GetURLStats(ctx context.Context, shortID string) (*URLMapping, error) {
+	ctx, span := tracer.Start(ctx, "GetURLStats")
+	defer span.End()
 	collection := repository.MongoClient.Database("shortener").Collection("urls")
 	var result URLMapping
 	err := collection.FindOne(ctx, bson.M{"short_id": shortID}).Decode(&result)
 	if err == mongo.ErrNoDocuments {
+		span.SetStatus(codes.Error, "short URL not found")
+		span.RecordError(err)
 		return nil, errors.New("short URL not found")
 	} else if err != nil {
+		span.SetStatus(codes.Error, "failed to get URL stats")
+		span.RecordError(err)
 		logger.Log.Errorf("Stats error: %v", err)
 		return nil, errors.New("internal error")
 	}
@@ -128,6 +152,8 @@ func GetURLStats(ctx context.Context, shortID string) (*URLMapping, error) {
 }
 
 func incrementAccessCount(ctx context.Context, shortID string) {
+	ctx, span := tracer.Start(ctx, "incrementAccessCount")
+	defer span.End()
 	collection := repository.MongoClient.Database("shortener").Collection("urls")
 	_, _ = collection.UpdateOne(
 		ctx,
@@ -137,11 +163,15 @@ func incrementAccessCount(ctx context.Context, shortID string) {
 }
 
 func DeleteShortID(ctx context.Context, shortID string) error {
+	ctx, span := tracer.Start(ctx, "DeleteShortID")
+	defer span.End()
 	// Redis DEL
 	start := time.Now()
 	err := repository.RedisClient.Del(ctx, shortID).Err()
 	metrics.RedisOpDuration.WithLabelValues("DEL").Observe(time.Since(start).Seconds())
 	if err != nil && err != redis.Nil {
+		span.SetStatus(codes.Error, "failed to delete from cache")
+		span.RecordError(err)
 		logger.Log.Warnf("Redis DEL error: %v", err)
 	}
 
@@ -151,10 +181,14 @@ func DeleteShortID(ctx context.Context, shortID string) error {
 	res, err := collection.DeleteOne(ctx, bson.M{"short_id": shortID})
 	metrics.MongoOpDuration.WithLabelValues("DeleteOne").Observe(time.Since(start).Seconds())
 	if err != nil {
+		span.SetStatus(codes.Error, "failed to delete from database")
+		span.RecordError(err)
 		logger.Log.Errorf("Mongo Delete error: %v", err)
 		return errors.New("failed to delete from database")
 	}
 	if res.DeletedCount == 0 {
+		span.SetStatus(codes.Error, "short URL not found")
+		span.RecordError(errors.New("short URL not found"))
 		return errors.New("short URL not found")
 	}
 
