@@ -12,7 +12,10 @@ import (
 )
 
 func InitTracer(ctx context.Context) func() {
-	exporter, err := otlptracehttp.New(ctx)
+	exporter, err := otlptracehttp.New(ctx,
+		otlptracehttp.WithEndpoint("jaeger:4318"),
+		otlptracehttp.WithInsecure(),
+	)
 	if err != nil {
 		log.Fatalf("failed to create exporter: %v", err)
 	}

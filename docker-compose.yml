@@ -61,7 +61,6 @@ services:
       - grafana-storage:/var/lib/grafana
     depends_on:
       - prometheus
-      - tempo
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2
@@ -110,15 +109,17 @@ services:
     ports:
       - "4318:4318"   # OTLP HTTP
     depends_on:
-      - tempo
+      - jaeger
 
-  tempo:
-    image: grafana/tempo:latest
-    command: ["-config.file=/etc/tempo.yaml"]
-    volumes:
-      - ./tempo.yaml:/etc/tempo.yaml
+  jaeger:
+    image: jaegertracing/all-in-one:1.55
+    container_name: jaeger
     ports:
-      - "3200:3200"
+      - "16686:16686" # UI
+      - "4317:4317"   # OTLP gRPC
+      - "14250:14250" # Jaeger collector
+    networks:
+      - monitoring
 
 volumes:
   redis-data: {}

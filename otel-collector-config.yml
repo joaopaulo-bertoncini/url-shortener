@@ -4,17 +4,17 @@ receivers:
       http:
 
 exporters:
-  otlp:
-    endpoint: tempo:4317
+  jaeger:
+    endpoint: jaeger:14250
     tls:
       insecure: true
 
 processors:
-  batch:
+  batch: {}
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp]
+      exporters: [jaeger]
