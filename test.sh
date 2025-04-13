@@ -12,3 +12,7 @@ export AUTH_TOKEN="testtoken123"
 
 http://localhost:9090
 http://localhost:3000
+
+
+echo "GET http://localhost:8080/kbzGrF8D" | vegeta attack -rate=5000 -duration=10s | tee results.bin | vegeta report
+vegeta plot < results.bin > plot.html && open plot.html
