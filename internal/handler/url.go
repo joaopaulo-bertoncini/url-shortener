@@ -57,8 +57,8 @@ func HandleRedirect(c *gin.Context) {
 
 	metrics.RedirectCounter.Inc()
 	span.SetAttributes(attribute.String("short_id", shortID), attribute.String("redirect_url", longURL))
-	//c.JSON(http.StatusOK, gin.H{"target": longURL})
-	c.Redirect(http.StatusMovedPermanently, longURL)
+	c.JSON(http.StatusOK, gin.H{"target": longURL})
+	//c.Redirect(http.StatusMovedPermanently, longURL)
 }
 
 func HandleDelete(c *gin.Context) {

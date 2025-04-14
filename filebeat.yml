@@ -1,5 +1,6 @@
 filebeat.inputs:
   - type: container
+    enabled: true
     paths:
       - /var/lib/docker/containers/*/*.log
     processors:
@@ -10,7 +11,7 @@ filebeat.inputs:
 
 output.elasticsearch:
   hosts: ["http://elasticsearch:9200"]
-  index: "url-shortener-logs"
+  index: "url-shortener-logs-%{+yyyy.MM.dd}"
 
 setup.kibana:
   host: "http://kibana:5601"
